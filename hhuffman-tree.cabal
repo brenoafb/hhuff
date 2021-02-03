@@ -1,0 +1,68 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 80268894af3dc930956354c9c78360e149faa680cc3b92b8f147f3a21e7f1e93
+
+name:           hhuffman-tree
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/brenoafb/hhuffman-tree#readme>
+homepage:       https://github.com/brenoafb/hhuffman-tree#readme
+bug-reports:    https://github.com/brenoafb/hhuffman-tree/issues
+author:         Breno Fatureto
+maintainer:     breno.afb@gmail.com
+copyright:      2021 Breno Fatureto
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+    containers
+
+source-repository head
+  type: git
+  location: https://github.com/brenoafb/hhuffman-tree
+
+library
+  exposed-modules:
+      Code
+      Lib
+      Tree
+  other-modules:
+      Paths_hhuffman_tree
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , containers
+  default-language: Haskell2010
+
+executable hhuffman-tree-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_hhuffman_tree
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , hhuffman-tree
+  default-language: Haskell2010
+
+test-suite hhuffman-tree-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_hhuffman_tree
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , hhuffman-tree
+  default-language: Haskell2010
