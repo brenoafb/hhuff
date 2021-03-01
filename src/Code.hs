@@ -1,16 +1,10 @@
 module Code where
 
+import Bits
 import Tree
 import Control.Applicative
 import qualified Data.Map  as M
 import qualified Data.List as L
-
-data Bit = O | I
-  deriving (Eq, Ord)
-
-instance Show Bit where
-  show O = "0"
-  show I = "1"
 
 try :: [Bit] -> M.Map [Bit] a -> Maybe ([Bit], a)
 try xs t = foldr1 (<|>) queries
@@ -55,4 +49,3 @@ freqs input =
   map (\xs@(x:_) -> (x, fromIntegral $ length xs))
   . L.group
   $ L.sort input
-
