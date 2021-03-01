@@ -44,15 +44,20 @@ fromByteString bs =
   in concatMap fromWord8 ws
 
 toByteString :: BitString -> B.ByteString
-toByteString bits = go bits []
-  where go :: BitString -> [Word8] -> B.ByteString
+toByteString bits = go padded []
+  where padded = pad' 8 bits -- prepend Os so contains an exact number of bytes
+        go :: BitString -> [Word8] -> B.ByteString
         go [] ws = B.pack ws
         go bs ws =
           let (w, rs) = toWord8 bs
           in go rs $ ws ++ [w]
 
+nearestGreaterMultiple x n =
+  let (q,r) = x `quotRem` n
+  in if r == 0 then x else (q+1) * n
+
 fromWord8 :: Word8 -> BitString
-fromWord8 = toEnum . fromEnum
+fromWord8 = pad 8 . toEnum . fromEnum
 
 -- assume that lists of bits are in LITTLE ENDIAN order
 -- more significant -> less significant
@@ -73,6 +78,12 @@ pad :: Int -> BitString -> BitString
 pad l bits
   | length bits >= l = bits
   | otherwise = replicate (l - length bits) O ++ bits
+
+pad' :: Int -> BitString -> BitString
+pad' n bits =
+  let l = length bits
+      l' = l `nearestGreaterMultiple` n
+  in replicate (l' - l) O ++ bits
 
 bit2int :: Bit -> Int
 bit2int O = 0
