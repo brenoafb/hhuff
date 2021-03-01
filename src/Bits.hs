@@ -1,19 +1,24 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverlappingInstances #-}
 
 module Bits where
 
 import Data.Word (Word8)
+import GHC.Generics (Generic)
+import qualified Data.Binary as Bin
 import qualified Data.ByteString as B
 
 data Bit = O | I
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic)
 
-type BitString = [Bit]
+instance Bin.Binary Bit
 
 instance Show Bit where
   show O = "0"
   show I = "1"
+
+type BitString = [Bit]
 
 instance Show BitString where
   show = concatMap show
@@ -43,9 +48,9 @@ fromByteString bs =
   let ws = B.unpack bs
   in concatMap fromWord8 ws
 
-toByteString :: BitString -> B.ByteString
-toByteString bits = go padded []
-  where padded = pad' 8 bits -- prepend Os so contains an exact number of bytes
+toByteString :: BitString -> (B.ByteString, Int)
+toByteString bits = (go padded [], n)
+  where (padded, n) = pad' 8 bits -- prepend Os so contains an exact number of bytes
         go :: BitString -> [Word8] -> B.ByteString
         go [] ws = B.pack ws
         go bs ws =
@@ -73,17 +78,18 @@ toWord8 bits =
       word8  = fromIntegral number
   in (word8, rem)
 
--- pads the input with Os so that the length is at least a given number
+-- pads the input with Os so that the length is a multiple of a given number
 pad :: Int -> BitString -> BitString
-pad l bits
-  | length bits >= l = bits
-  | otherwise = replicate (l - length bits) O ++ bits
-
-pad' :: Int -> BitString -> BitString
-pad' n bits =
+pad n bits =
   let l = length bits
       l' = l `nearestGreaterMultiple` n
   in replicate (l' - l) O ++ bits
+
+pad' :: Int -> BitString -> (BitString, Int)
+pad' n bits =
+  let l = length bits
+      l' = l `nearestGreaterMultiple` n
+  in (replicate (l' - l) O ++ bits, l' - l)
 
 bit2int :: Bit -> Int
 bit2int O = 0

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 80268894af3dc930956354c9c78360e149faa680cc3b92b8f147f3a21e7f1e93
+-- hash: 99d6a219573881371518e6954a1950e56ba8a0cd362802bed66a16647810cdb1
 
 name:           hhuffman-tree
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 
 library
   exposed-modules:
+      Bits
       Code
       Lib
       Tree
@@ -37,6 +38,8 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , binary
+    , bytestring
     , containers
   default-language: Haskell2010
 
@@ -49,6 +52,8 @@ executable hhuffman-tree-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , binary
+    , bytestring
     , containers
     , hhuffman-tree
   default-language: Haskell2010
@@ -63,6 +68,8 @@ test-suite hhuffman-tree-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , binary
+    , bytestring
     , containers
     , hhuffman-tree
   default-language: Haskell2010
