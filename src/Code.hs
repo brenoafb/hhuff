@@ -30,30 +30,59 @@ newtype Table a = Table (M.Map a BitString)
 instance Bin.Binary a => Bin.Binary (Table a)
 
 data EncodingDataT =
-     EncodingDataT { table :: Table Char
-                   , padding :: Int
-                   , contents :: B.ByteString
+     EncodingDataT { tableT :: Table Char
+                   , paddingT :: Int
+                   , contentsT :: B.ByteString
                    } deriving (Generic)
 
 instance Bin.Binary EncodingDataT
 
+data EncodingDataB =
+     EncodingDataB { tableB :: Table Word8
+                   , paddingB :: Int
+                   , contentsB :: B.ByteString
+                   } deriving (Generic)
+
+instance Bin.Binary EncodingDataB
+
+
 encodeT input = do
+  (table, padding, bs) <- encode' input
+  pure $ EncodingDataT { tableT    = table
+                       , paddingT  = padding
+                       , contentsT = bs
+                       }
+
+encodeB input = do
+  (table, padding, bs) <- encode' $ B.unpack input
+  pure $ EncodingDataB { tableB    = table
+                       , paddingB  = padding
+                       , contentsB = bs
+                       }
+
+decodeB (EncodingDataB table padding contents) = do
+  let contents' = drop padding $ fromByteString contents
+  B.pack <$> decode contents' table
+
+decodeT (EncodingDataT table padding contents) = do
+  let contents' = drop padding $ fromByteString contents
+  decode contents' table
+
+encode' input = do
   let f = freqs input
       tree = buildTree f
   table <- mkTable tree
   encoded <- encode input table
   let (bs, padding) = toByteString encoded
-  pure $ EncodingDataT { table = table
-                       , padding = padding
-                       , contents = bs
-                       }
+  pure (table, padding, bs)
 
-try :: BitString -> M.Map BitString a -> Maybe (BitString, a)
-try xs t = foldr1 (<|>) queries
+try :: Ord a => BitString -> Table a -> Maybe (BitString, a)
+try xs (Table t) = foldr1 (<|>) queries
   where splits  = map (`splitAt` xs) [0..length xs]
-        queries = map (\(c, r) -> sequenceA (r, M.lookup c t)) splits
+        queries = map (\(c, r) -> sequenceA (r, M.lookup c t')) splits
+        t' = reverseMap t
 
-decode :: Ord a => BitString -> M.Map BitString a-> Maybe [a]
+decode :: Ord a => BitString -> Table a -> Maybe [a]
 decode [] _ = pure []
 decode bits t = do
   (remBits, x) <- try bits t
@@ -91,3 +120,6 @@ freqs input =
   map (\xs@(x:_) -> (x, fromIntegral $ length xs))
   . L.group
   $ L.sort input
+
+reverseMap :: (Ord a, Ord b) => M.Map a b -> M.Map b a
+reverseMap = M.fromList . map (\(x,y) -> (y,x)) . M.toList
