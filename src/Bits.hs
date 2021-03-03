@@ -4,6 +4,7 @@
 
 module Bits where
 
+import Data.Bits ((.&.))
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import qualified Data.Binary as Bin
@@ -31,17 +32,21 @@ instance Show BitString where
 instance Enum BitString where
   toEnum 0 = [O]
   toEnum 1 = [I]
-  -- TODO can be more efficient (check for powers of two)
-  toEnum x =
-    let (q, r) = x `quotRem` 2
-    in case r of
-         0 -> toEnum q ++ [O]
-         _ -> toEnum q ++ [I]
+  toEnum x
+    | isPowerOfTwo x = let k = round (logBase 2 $ fromIntegral x) in I : replicate k O
+    | otherwise =
+        let (q, r) = x `quotRem` 2
+        in case r of
+             0 -> toEnum q ++ [O]
+             _ -> toEnum q ++ [I]
 
   fromEnum bits =
     let l = length bits
         ps = map (l -) [1..l]
     in sum $ zipWith (\b p -> bit2int b * (2 ^ p)) bits ps
+
+isPowerOfTwo :: Int -> Bool
+isPowerOfTwo x = x .&. (x - 1) == 0
 
 fromByteString :: B.ByteString -> BitString
 fromByteString bs =
