@@ -1,9 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Code where
 
 import Bits
 import Tree
+
 import Control.Applicative
+import Control.Monad.State
 
 import Data.Word (Word8)
 import GHC.Generics (Generic)
@@ -11,6 +14,7 @@ import qualified Data.Binary as Bin
 import qualified Data.ByteString as B
 import qualified Data.List as L
 import qualified Data.Map  as M
+import qualified Data.Text as T
 
 newtype Table a = Table (M.Map a BitString)
   deriving Generic
@@ -47,11 +51,15 @@ instance Bin.Binary EncodingDataB
 
 
 encodeT input = do
-  (table, padding, bs) <- encode' input
+  (table, padding, bs) <- encode' $ T.unpack input
   pure $ EncodingDataT { tableT    = table
                        , paddingT  = padding
                        , contentsT = bs
                        }
+
+decodeT (EncodingDataT table padding contents) = do
+  let contents' = drop padding $ fromByteString contents
+  T.pack <$> decode contents' table
 
 encodeB input = do
   (table, padding, bs) <- encode' $ B.unpack input
@@ -64,17 +72,17 @@ decodeB (EncodingDataB table padding contents) = do
   let contents' = drop padding $ fromByteString contents
   B.pack <$> decode contents' table
 
-decodeT (EncodingDataT table padding contents) = do
-  let contents' = drop padding $ fromByteString contents
-  decode contents' table
 
+encode' :: (Traversable t, Ord a) => t a -> Maybe (Table a, Int, B.ByteString)
 encode' input = do
-  let f = freqs input
+  let f = freqs $ getSample input
       tree = buildTree f
   table <- mkTable tree
   encoded <- encode input table
   let (bs, padding) = toByteString encoded
   pure (table, padding, bs)
+
+getSample = id -- TODO we don't need to build a frequency table from the whole input
 
 try :: Ord a => BitString -> Table a -> Maybe (BitString, a)
 try xs (Table t) = foldr1 (<|>) queries
@@ -88,7 +96,7 @@ decode bits t = do
   (remBits, x) <- try bits t
   (x :) <$> decode remBits t
 
-encode :: Ord a => [a] -> Table a -> Maybe BitString
+encode :: (Traversable t, Ord a) => t a -> Table a -> Maybe BitString
 encode input (Table t) = concat <$> traverse (`M.lookup` t) input
 
 getCode :: (Eq a) => Tree a n -> a -> Maybe BitString
@@ -105,8 +113,8 @@ mkTable t@(Node _ xs _ _) = do
   codes <- traverse (\x -> sequenceA (x, getCode t x)) xs
   pure . Table $ M.fromList codes
 
-buildTree :: [(a, Integer)] -> Tree a Integer
-buildTree = go . map (\(x, w) -> Leaf w x)
+buildTree :: M.Map a Int -> Tree a Int
+buildTree = go . map (\(x, w) -> Leaf w x) . M.toList
   where go :: (Num n, Ord n) => [Tree a n] -> Tree a n
         go [] = error "Empty list"
         go [t] = t
@@ -114,12 +122,15 @@ buildTree = go . map (\(x, w) -> Leaf w x)
           let (x1:x2:xs) = L.sortOn getTreeWeight ls -- TODO we only need to extract 2 min
            in go $ merge x1 x2 : xs
 
-freqs :: (Ord c, Num n) => [c] -> [(c, n)]
-freqs [] = []
-freqs input =
-  map (\xs@(x:_) -> (x, fromIntegral $ length xs))
-  . L.group
-  $ L.sort input
+freqs :: (Ord a, Traversable t) => t a -> M.Map a Int
+freqs xs = execState s M.empty
+  where s = traverse updateCount xs
+        updateCount :: (Ord a, MonadState (M.Map a Int) m) => a -> m ()
+        updateCount x = do
+          m <- get
+          case M.lookup x m of
+            Nothing -> modify (M.insert x 1)
+            Just n  -> modify (M.insert x $ n + 1)
 
 reverseMap :: (Ord a, Ord b) => M.Map a b -> M.Map b a
 reverseMap = M.fromList . map (\(x,y) -> (y,x)) . M.toList
