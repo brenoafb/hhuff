@@ -9,7 +9,6 @@ copyright:           "2021 Breno Fatureto"
 extra-source-files:
 - README.md
 - ChangeLog.md
-- containers
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -25,6 +24,9 @@ dependencies:
 - containers
 - bytestring
 - binary
+- mtl
+- monad-loops
+- text
 
 library:
   source-dirs: src

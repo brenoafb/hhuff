@@ -1,11 +1,14 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverlappingInstances #-}
 
 module Bits where
 
 import Data.Bits ((.&.))
 import Data.Word (Word8)
+import Control.Monad.State
+import Control.Monad.Loops
 import GHC.Generics (Generic)
 import qualified Data.Binary as Bin
 import qualified Data.ByteString as B
@@ -53,14 +56,22 @@ fromByteString bs =
   let ws = B.unpack bs
   in concatMap fromWord8 ws
 
+-- toByteString :: BitString -> (B.ByteString, Int)
+-- toByteString bits = (go padded [], n)
+--   where (padded, n) = pad' 8 bits -- prepend Os so contains an exact number of bytes
+--         go :: BitString -> [Word8] -> B.ByteString
+--         go [] ws = B.pack ws
+--         go bs ws =
+--           let (w, rs) = toWord8 bs
+--           in go rs $ ws ++ [w]
+
 toByteString :: BitString -> (B.ByteString, Int)
-toByteString bits = (go padded [], n)
-  where (padded, n) = pad' 8 bits -- prepend Os so contains an exact number of bytes
-        go :: BitString -> [Word8] -> B.ByteString
-        go [] ws = B.pack ws
-        go bs ws =
-          let (w, rs) = toWord8 bs
-          in go rs $ ws ++ [w]
+toByteString bits = (B.pack $ evalState s padded, n)
+  where (padded, n) = pad' 8 bits
+        s = toWord8' `untilM` p
+        p = do
+          bs <- get
+          pure $ null bs
 
 nearestGreaterMultiple x n =
   let (q,r) = x `quotRem` n
@@ -76,12 +87,21 @@ fromWord8 = pad 8 . toEnum . fromEnum
 -- example: 0001 0000 = 16
 toWord8 :: BitString -> (Word8, BitString)
 toWord8 bits =
-  let byte   = take 8 bits
-      rem    = drop 8 bits
+  let (byte, r) = splitAt 8 bits
       padded = pad 8 byte
       number = fromEnum padded
       word8  = fromIntegral number
-  in (word8, rem)
+  in (word8, r)
+
+toWord8' :: (MonadState BitString m) => m Word8
+toWord8' = do
+  bits <- get
+  let (byte, r) = splitAt 8 bits
+      padded = pad 8 byte
+      number = fromEnum padded
+      word   = fromIntegral number
+  put r
+  pure word
 
 -- pads the input with Os so that the length is a multiple of a given number
 pad :: Int -> BitString -> BitString
