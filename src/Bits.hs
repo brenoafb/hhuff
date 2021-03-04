@@ -48,6 +48,10 @@ instance Enum BitString where
         ps = map (l -) [1..l]
     in sum $ zipWith (\b p -> bit2int b * (2 ^ p)) bits ps
 
+bit2int :: Bit -> Int
+bit2int O = 0
+bit2int I = 1
+
 isPowerOfTwo :: Int -> Bool
 isPowerOfTwo x = x .&. (x - 1) == 0
 
@@ -56,19 +60,10 @@ fromByteString bs =
   let ws = B.unpack bs
   in concatMap fromWord8 ws
 
--- toByteString :: BitString -> (B.ByteString, Int)
--- toByteString bits = (go padded [], n)
---   where (padded, n) = pad' 8 bits -- prepend Os so contains an exact number of bytes
---         go :: BitString -> [Word8] -> B.ByteString
---         go [] ws = B.pack ws
---         go bs ws =
---           let (w, rs) = toWord8 bs
---           in go rs $ ws ++ [w]
-
 toByteString :: BitString -> (B.ByteString, Int)
 toByteString bits = (B.pack $ evalState s padded, n)
   where (padded, n) = pad' 8 bits
-        s = toWord8' `untilM` p
+        s = toWord8 `untilM` p
         p = do
           bs <- get
           pure $ null bs
@@ -80,21 +75,8 @@ nearestGreaterMultiple x n =
 fromWord8 :: Word8 -> BitString
 fromWord8 = pad 8 . toEnum . fromEnum
 
--- assume that lists of bits are in LITTLE ENDIAN order
--- more significant -> less significant
--- example: 0000 0001 = 1
--- example: 0000 1000 = 8
--- example: 0001 0000 = 16
-toWord8 :: BitString -> (Word8, BitString)
-toWord8 bits =
-  let (byte, r) = splitAt 8 bits
-      padded = pad 8 byte
-      number = fromEnum padded
-      word8  = fromIntegral number
-  in (word8, r)
-
-toWord8' :: (MonadState BitString m) => m Word8
-toWord8' = do
+toWord8 :: (MonadState BitString m) => m Word8
+toWord8 = do
   bits <- get
   let (byte, r) = splitAt 8 bits
       padded = pad 8 byte
@@ -115,7 +97,3 @@ pad' n bits =
   let l = length bits
       l' = l `nearestGreaterMultiple` n
   in (replicate (l' - l) O ++ bits, l' - l)
-
-bit2int :: Bit -> Int
-bit2int O = 0
-bit2int I = 1

@@ -7,9 +7,13 @@ import Tree
 
 import Control.Applicative
 import Control.Monad.State
+import Control.Monad.Reader
+import Control.Monad.Loops
+import Control.Monad.Identity
 
 import Data.Word (Word8)
 import GHC.Generics (Generic)
+import Data.Maybe (fromJust)
 import qualified Data.Binary as Bin
 import qualified Data.ByteString as B
 import qualified Data.List as L
@@ -18,18 +22,6 @@ import qualified Data.Text as T
 
 newtype Table a = Table (M.Map a BitString)
   deriving Generic
-
--- data EncodingMode = TextMode | BinaryMode
---   deriving (Eq, Show)
--- data EncodingData a =
---   EncodingData { table :: Table a
---               , padding :: Int
---               , mode :: EncodingMode -- not sure about this
---               , contents :: B.ByteString
---               }
--- type EncodingDataT = EncodingData Char
---
--- type EncodingDataB = EncodingData Word8
 
 instance Bin.Binary a => Bin.Binary (Table a)
 
@@ -49,7 +41,6 @@ data EncodingDataB =
 
 instance Bin.Binary EncodingDataB
 
-
 encodeT input = do
   (table, padding, bs) <- encode' $ T.unpack input
   pure $ EncodingDataT { tableT    = table
@@ -57,9 +48,21 @@ encodeT input = do
                        , contentsT = bs
                        }
 
+-- decodeT (EncodingDataT table padding contents) = do
+--   let contents' = drop padding $ fromByteString contents
+--   T.pack <$> decode contents' table
+
 decodeT (EncodingDataT table padding contents) = do
   let contents' = drop padding $ fromByteString contents
-  T.pack <$> decode contents' table
+  Just . T.pack $ decode' contents' table
+
+-- decodeB (EncodingDataB table padding contents) = do
+--   let contents' = drop padding $ fromByteString contents
+--   B.pack <$> decode contents' table
+
+decodeB (EncodingDataB table padding contents) = do
+  let contents' = drop padding $ fromByteString contents
+  Just . B.pack $ decode' contents' table
 
 encodeB input = do
   (table, padding, bs) <- encode' $ B.unpack input
@@ -67,11 +70,6 @@ encodeB input = do
                        , paddingB  = padding
                        , contentsB = bs
                        }
-
-decodeB (EncodingDataB table padding contents) = do
-  let contents' = drop padding $ fromByteString contents
-  B.pack <$> decode contents' table
-
 
 encode' :: (Traversable t, Ord a) => t a -> Maybe (Table a, Int, B.ByteString)
 encode' input = do
@@ -84,17 +82,40 @@ encode' input = do
 
 getSample = id -- TODO we don't need to build a frequency table from the whole input
 
-try :: Ord a => BitString -> Table a -> Maybe (BitString, a)
-try xs (Table t) = foldr1 (<|>) queries
-  where splits  = map (`splitAt` xs) [0..length xs]
-        queries = map (\(c, r) -> sequenceA (r, M.lookup c t')) splits
+-- decode' :: Ord a => BitString -> Table a -> Maybe [a]
+decode' bits (Table t) = runIdentity $ runReaderT (evalStateT s bits) (t', k)
+  where s = try' `untilM` p
+        p = do
+          bs <- get
+          pure $ null bs
         t' = reverseMap t
+        k  = M.keys t'
+        try' :: StateT BitString (ReaderT (M.Map BitString a, [BitString]) Identity) a
+        try' = do
+          bits <- get
+          (m, ks) <- ask
+          case L.find (`L.isPrefixOf` bits) ks of
+            Nothing -> error "No valid prefix" -- TODO handle this
+            Just k  -> do
+              let n = length k
+                  bits' = drop n bits
+              put bits'
+              pure . fromJust $ M.lookup k m -- k is guaranteed to be in m
 
 decode :: Ord a => BitString -> Table a -> Maybe [a]
 decode [] _ = pure []
-decode bits t = do
-  (remBits, x) <- try bits t
-  (x :) <$> decode remBits t
+decode bits table@(Table t) = do
+  (remBits, x) <- try bits t'
+  (x :) <$> decode remBits table
+  where
+    t' = reverseMap t
+    try :: Ord a => BitString -> M.Map BitString a -> Maybe (BitString, a)
+    try xs t = foldr1 (<|>) queries
+      where splits  = map (`splitAt` xs) [0..length xs]
+            queries = map (\(c, r) -> sequenceA (r, M.lookup c t)) splits
+
+getPrefix :: BitString -> M.Map BitString a -> BitString
+getPrefix = undefined
 
 encode :: (Traversable t, Ord a) => t a -> Table a -> Maybe BitString
 encode input (Table t) = concat <$> traverse (`M.lookup` t) input
