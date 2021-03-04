@@ -58,16 +58,6 @@ binaryDecode inputFile outputFile = do
         Just bytes -> do
           B.writeFile outputFile bytes
 
--- -- f :: String -> Maybe (BitString, String, EncodingTable)
--- f input = do
---   let f = freqs input
---       tree = buildTree f
---   encodingTable <- mkTable tree
---   let decodingTable = reverseMap encodingTable
---   encoded <- encode input encodingTable
---   decoded <- decode encoded decodingTable
---   pure (encoded, decoded, encodingTable)
-
 printTable (Table table) =
   mapM_ (\(x, y) -> putStrLn (show x ++ "\t" ++ show y))
         $ M.toList table
