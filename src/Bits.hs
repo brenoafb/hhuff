@@ -64,10 +64,9 @@ toByteString :: BitString -> (B.ByteString, Int)
 toByteString bits = (B.pack $ evalState s padded, n)
   where (padded, n) = pad' 8 bits
         s = toWord8 `untilM` p
-        p = do
-          bs <- get
-          pure $ null bs
+        p = gets null
 
+nearestGreaterMultiple :: Integral a => a -> a -> a
 nearestGreaterMultiple x n =
   let (q,r) = x `quotRem` n
   in if r == 0 then x else (q+1) * n

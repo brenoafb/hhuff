@@ -15,6 +15,7 @@ import Tree
 
 main :: IO ()
 main = getArgs >>= parse
+-- main = binaryEncode "input.txt" "encoded.bin"
 
 parse ["-b", inputFile, outputFile] = binaryEncode inputFile outputFile
 parse ["-B", inputFile, outputFile] = binaryDecode inputFile outputFile

@@ -42,56 +42,44 @@ data EncodingDataB =
 instance Bin.Binary EncodingDataB
 
 encodeT input = do
-  (table, padding, bs) <- encode' $ T.unpack input
+  (table, padding, bs) <- encode $ T.unpack input
   pure $ EncodingDataT { tableT    = table
                        , paddingT  = padding
                        , contentsT = bs
                        }
 
--- decodeT (EncodingDataT table padding contents) = do
---   let contents' = drop padding $ fromByteString contents
---   T.pack <$> decode contents' table
-
-decodeT (EncodingDataT table padding contents) = do
-  let contents' = drop padding $ fromByteString contents
-  Just . T.pack $ decode' contents' table
-
--- decodeB (EncodingDataB table padding contents) = do
---   let contents' = drop padding $ fromByteString contents
---   B.pack <$> decode contents' table
-
-decodeB (EncodingDataB table padding contents) = do
-  let contents' = drop padding $ fromByteString contents
-  Just . B.pack $ decode' contents' table
-
 encodeB input = do
-  (table, padding, bs) <- encode' $ B.unpack input
+  (table, padding, bs) <- encode $ B.unpack input
   pure $ EncodingDataB { tableB    = table
                        , paddingB  = padding
                        , contentsB = bs
                        }
 
-encode' :: (Traversable t, Ord a) => t a -> Maybe (Table a, Int, B.ByteString)
-encode' input = do
-  let f = freqs $ getSample input
+decodeT (EncodingDataT table padding contents) = do
+  let contents' = drop padding $ fromByteString contents
+  Just . T.pack $ decode contents' table
+
+decodeB (EncodingDataB table padding contents) = do
+  let contents' = drop padding $ fromByteString contents
+  Just . B.pack $ decode contents' table
+
+encode :: (Traversable t, Ord a) => t a -> Maybe (Table a, Int, B.ByteString)
+encode input = do
+  let f = freqs input
       tree = buildTree f
-  table <- mkTable tree
-  encoded <- encode input table
+  table@(Table t) <- mkTable tree
+  encoded <- concat <$> traverse (`M.lookup` t) input
   let (bs, padding) = toByteString encoded
   pure (table, padding, bs)
 
-getSample = id -- TODO we don't need to build a frequency table from the whole input
-
--- decode' :: Ord a => BitString -> Table a -> Maybe [a]
-decode' bits (Table t) = runIdentity $ runReaderT (evalStateT s bits) (t', k)
-  where s = try' `untilM` p
-        p = do
-          bs <- get
-          pure $ null bs
+-- decode :: Ord a => BitString -> Table a -> Maybe [a]
+decode :: Ord a => BitString -> Table a -> [a]
+decode bits (Table t) = runIdentity $ runReaderT (evalStateT s bits) (t', k)
+  where s = try `untilM` gets null
         t' = reverseMap t
         k  = M.keys t'
-        try' :: StateT BitString (ReaderT (M.Map BitString a, [BitString]) Identity) a
-        try' = do
+        try :: StateT BitString (ReaderT (M.Map BitString a, [BitString]) Identity) a
+        try = do
           bits <- get
           (m, ks) <- ask
           case L.find (`L.isPrefixOf` bits) ks of
@@ -101,24 +89,6 @@ decode' bits (Table t) = runIdentity $ runReaderT (evalStateT s bits) (t', k)
                   bits' = drop n bits
               put bits'
               pure . fromJust $ M.lookup k m -- k is guaranteed to be in m
-
-decode :: Ord a => BitString -> Table a -> Maybe [a]
-decode [] _ = pure []
-decode bits table@(Table t) = do
-  (remBits, x) <- try bits t'
-  (x :) <$> decode remBits table
-  where
-    t' = reverseMap t
-    try :: Ord a => BitString -> M.Map BitString a -> Maybe (BitString, a)
-    try xs t = foldr1 (<|>) queries
-      where splits  = map (`splitAt` xs) [0..length xs]
-            queries = map (\(c, r) -> sequenceA (r, M.lookup c t)) splits
-
-getPrefix :: BitString -> M.Map BitString a -> BitString
-getPrefix = undefined
-
-encode :: (Traversable t, Ord a) => t a -> Table a -> Maybe BitString
-encode input (Table t) = concat <$> traverse (`M.lookup` t) input
 
 getCode :: (Eq a) => Tree a n -> a -> Maybe BitString
 getCode (Leaf _ c) x
