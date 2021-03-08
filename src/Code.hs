@@ -1,15 +1,17 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Code where
 
 import Bits
 import Tree
 
 import Control.Applicative
-import Control.Monad.State
-import Control.Monad.Reader
-import Control.Monad.Loops
+import Control.Monad.Except
 import Control.Monad.Identity
+import Control.Monad.Loops
+import Control.Monad.Reader
+import Control.Monad.State
 
 import Data.Word (Word8)
 import GHC.Generics (Generic)
@@ -24,6 +26,8 @@ newtype Table a = Table (M.Map a BitString)
   deriving Generic
 
 instance Bin.Binary a => Bin.Binary (Table a)
+
+type Error = T.Text
 
 data EncodingDataT =
      EncodingDataT { tableT :: Table Char
@@ -57,11 +61,11 @@ encodeB input = do
 
 decodeT (EncodingDataT table padding contents) = do
   let contents' = drop padding $ fromByteString contents
-  Just . T.pack $ decode contents' table
+  T.pack <$> decode contents' table
 
 decodeB (EncodingDataB table padding contents) = do
   let contents' = drop padding $ fromByteString contents
-  Just . B.pack $ decode contents' table
+  B.pack <$> decode contents' table
 
 encode :: (Traversable t, Ord a) => t a -> Maybe (Table a, Int, B.ByteString)
 encode input = do
@@ -73,17 +77,17 @@ encode input = do
   pure (table, padding, bs)
 
 -- decode :: Ord a => BitString -> Table a -> Maybe [a]
-decode :: Ord a => BitString -> Table a -> [a]
-decode bits (Table t) = runIdentity $ runReaderT (evalStateT s bits) (t', k)
+decode :: Ord a => BitString -> Table a -> Either Error [a]
+decode bits (Table t) = runIdentity $ runExceptT $ runReaderT (evalStateT s bits) (t', k)
   where s = try `untilM` gets null
         t' = reverseMap t
         k  = M.keys t'
-        try :: StateT BitString (ReaderT (M.Map BitString a, [BitString]) Identity) a
+        try :: StateT BitString (ReaderT (M.Map BitString a, [BitString]) (ExceptT Error Identity)) a
         try = do
           bits <- get
           (m, ks) <- ask
           case L.find (`L.isPrefixOf` bits) ks of
-            Nothing -> error "No valid prefix" -- TODO handle this
+            Nothing -> throwError "No valid prefix" -- TODO handle this
             Just k  -> do
               let n = length k
                   bits' = drop n bits

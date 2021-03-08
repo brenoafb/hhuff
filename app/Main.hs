@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 module Main where
 
@@ -15,7 +14,6 @@ import Tree
 
 main :: IO ()
 main = getArgs >>= parse
--- main = binaryEncode "input.txt" "encoded.bin"
 
 parse ["-b", inputFile, outputFile] = binaryEncode inputFile outputFile
 parse ["-B", inputFile, outputFile] = binaryDecode inputFile outputFile
@@ -37,8 +35,8 @@ textDecode inputFile outputFile = do
     Right d -> do
       let decodedM = decodeT d
       case decodedM of
-        Nothing -> putStrLn "Decoding error"
-        Just text -> do
+        Left err -> print err
+        Right text -> do
           TIO.writeFile outputFile text
 
 binaryEncode inputFile outputFile = do
@@ -55,8 +53,8 @@ binaryDecode inputFile outputFile = do
     Right d -> do
       let decodedM = decodeB d
       case decodedM of
-        Nothing -> putStrLn "Decoding error"
-        Just bytes -> do
+        Left err -> print err
+        Right bytes -> do
           B.writeFile outputFile bytes
 
 printTable (Table table) =
