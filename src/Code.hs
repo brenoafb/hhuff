@@ -76,7 +76,6 @@ encode input = do
   let (bs, padding) = toByteString encoded
   pure (table, padding, bs)
 
--- decode :: Ord a => BitString -> Table a -> Maybe [a]
 decode :: Ord a => BitString -> Table a -> Either Error [a]
 decode bits (Table t) = runIdentity $ runExceptT $ runReaderT (evalStateT s bits) (t', k)
   where s = try `untilM` gets null
