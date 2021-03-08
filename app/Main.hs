@@ -19,13 +19,22 @@ parse ["-b", inputFile, outputFile] = binaryEncode inputFile outputFile
 parse ["-B", inputFile, outputFile] = binaryDecode inputFile outputFile
 parse ["-t", inputFile, outputFile] = textEncode inputFile outputFile
 parse ["-T", inputFile, outputFile] = textDecode inputFile outputFile
-parse args = print args
+parse _ = putStr usage
+
+usage = unlines
+  [ "usage: -[t/b/T/B] input-file output-file"
+  , "-t: encode in text mode"
+  , "-T: decode in text mode"
+  , "-b: encode in binary mode"
+  , "-B: decode in binary mode"
+  ]
 
 textEncode inputFile outputFile = do
   input <- TIO.readFile inputFile
   case encodeT input of
-    Nothing -> putStrLn "Error"
+    Nothing -> putStrLn "Encoding error"
     Just d -> do
+      putStrLn $ "Encoded content size: " <> show (B.length $ contentsT d) <> " bytes"
       Bin.encodeFile outputFile d
 
 textDecode inputFile outputFile = do
@@ -42,8 +51,9 @@ textDecode inputFile outputFile = do
 binaryEncode inputFile outputFile = do
   input <- B.readFile inputFile
   case encodeB input of
-    Nothing -> putStrLn "Error"
+    Nothing -> putStrLn "Encoding error"
     Just d -> do
+      putStrLn $ "Encoded content size: " <> show (B.length $ contentsB d) <> " bytes"
       Bin.encodeFile outputFile d
 
 binaryDecode inputFile outputFile = do
