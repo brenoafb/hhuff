@@ -70,7 +70,7 @@ decodeB (EncodingDataB table padding contents) = do
 encode :: (Traversable t, Ord a) => t a -> Maybe (Table a, Int, B.ByteString)
 encode input = do
   let f = freqs input
-      tree = buildTree f
+  tree <- buildTree f
   table@(Table t) <- mkTable tree
   encoded <- concat <$> traverse (`M.lookup` t) input
   let (bs, padding) = toByteString encoded
@@ -87,7 +87,7 @@ decode bits (Table t) = runIdentity $ runExceptT $ runReaderT (evalStateT s bits
           bits <- get
           (m, ks) <- ask
           case L.find (`L.isPrefixOf` bits) ks of
-            Nothing -> throwError "No valid prefix" -- TODO handle this
+            Nothing -> throwError "No valid prefix"
             Just k  -> do
               let n = length k
                   bits' = drop n bits
@@ -108,14 +108,15 @@ mkTable t@(Node _ xs _ _) = do
   codes <- traverse (\x -> sequenceA (x, getCode t x)) xs
   pure . Table $ M.fromList codes
 
-buildTree :: M.Map a Int -> Tree a Int
+buildTree :: M.Map a Int -> Maybe (Tree a Int)
 buildTree = go . map (\(x, w) -> Leaf w x) . M.toList
-  where go :: (Num n, Ord n) => [Tree a n] -> Tree a n
-        go [] = error "Empty list"
-        go [t] = t
-        go ls =
-          let (x1:x2:xs) = L.sortOn getTreeWeight ls -- TODO we only need to extract 2 min
-           in go $ merge x1 x2 : xs
+  where go :: (Num n, Ord n) => [Tree a n] -> Maybe (Tree a n)
+        go [] = Nothing
+        go [t] = pure t
+        go ls = do
+          let (x1:x2:xs) = L.sortOn getTreeWeight ls
+              merged = merge x1 x2 : xs
+          go merged
 
 freqs :: (Ord a, Traversable t) => t a -> M.Map a Int
 freqs xs = execState s M.empty
