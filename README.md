@@ -34,11 +34,24 @@ $ stack run -- -B compressed.bin output.png
 
 ## Compression ratios
 
-| File               | Mode   | Original Size (Bytes) | Compressed Size (Bytes) | Ratio (Compressed/Original) |
-| `dom_casmurro.txt` | Text   | 389670                | 219091                  | 0.5622475428                |
-| `fonte.txt`        | Text   | 1000000               | 368845                  | 0.368845                    |
-| `fonte0.txt`       | Text   | 1000                  | 292                     | 0.292                       |
-| `fonte1.txt`       | Text   | 1000000               | 416105                  | 0.416105                    |
-| `TEncEntropy.txt`  | Text   | 19415                 | 14356                   | 0.7394282771                |
-| `TEncSearch.txt`   | Text   | 253012                | 165855                  | 0.6555222677                |
-| `lena.bmp`         | Binary | 263290                | 252557                  | 0.959235064                 |
+This program.
+
+| File             | Original Size (Bytes) | Compressed Size (Bytes) | Ratio (Compressed/Original) |
+| dom_casmurro.txt | 389670                | 219091                  | 0.562248                    |
+| fonte0.txt       | 1000                  | 292                     | 0.292000                    |
+| fonte1.txt       | 1000000               | 416105                  | 0.416105                    |
+| fonte.txt        | 1000000               | 368845                  | 0.368845                    |
+| lena.bmp         | 263290                | 252557                  | 0.959235                    |
+| TEncEntropy.txt  | 19415                 | 14356                   | 0.739428                    |
+| TEncSearch.txt   | 253012                | 165855                  | 0.655522                    |
+
+Ubuntu's `zip` utility.
+
+| File             | Original Size (Bytes) | Compressed Size (Bytes) | Ratio (Compressed/Original) |
+| dom_casmurro.txt | 389670                | 153834                  | 0.394780                    |
+| fonte0.txt       | 1000                  | 501                     | 0.501000                    |
+| fonte1.txt       | 1000000               | 489832                  | 0.489832                    |
+| fonte.txt        | 1000000               | 428496                  | 0.428496                    |
+| lena.bmp         | 263290                | 227772                  | 0.865099                    |
+| TEncEntropy.txt  | 19415                 | 4409                    | 0.227092                    |
+| TEncSearch.txt   | 253012                | 38759                   | 0.153190                    |
