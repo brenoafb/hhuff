@@ -34,7 +34,7 @@ textEncode inputFile outputFile = do
   case encodeT input of
     Nothing -> putStrLn "Encoding error"
     Just d -> do
-      putStrLn $ "Encoded content size: " <> show (B.length $ contentsT d) <> " bytes"
+      printInfoT d
       Bin.encodeFile outputFile d
 
 textDecode inputFile outputFile = do
@@ -53,7 +53,7 @@ binaryEncode inputFile outputFile = do
   case encodeB input of
     Nothing -> putStrLn "Encoding error"
     Just d -> do
-      putStrLn $ "Encoded content size: " <> show (B.length $ contentsB d) <> " bytes"
+      printInfoB d
       Bin.encodeFile outputFile d
 
 binaryDecode inputFile outputFile = do
@@ -70,3 +70,22 @@ binaryDecode inputFile outputFile = do
 printTable (Table table) =
   mapM_ (\(x, y) -> putStrLn (show x ++ "\t" ++ show y))
         $ M.toList table
+
+
+printInfoT :: EncodingDataT -> IO ()
+printInfoT edt = do
+  putStrLn $ "Encoded cotent size: " <> show (B.length $ contentsT edt) <> " bytes"
+  putStrLn $ "Padding size: " <> (show $ paddingT edt)
+  putStrLn $ "Average symbol length: " <> show (averageSymbolLength $ tableT edt) <> " bits"
+
+printInfoB :: EncodingDataB -> IO ()
+printInfoB edt = do
+  putStrLn $ "Encoded cotent size: " <> show (B.length $ contentsB edt) <> " bytes"
+  putStrLn $ "Padding size: " <> (show $ paddingB edt)
+  putStrLn $ "Average symbol length: " <> show (averageSymbolLength $ tableB edt) <> " bits"
+
+averageSymbolLength :: Table a -> Double
+averageSymbolLength (Table m) = s / n
+  where codes = M.elems m
+        s = sum $ map (fromIntegral . length) codes
+        n = fromIntegral $ length codes
