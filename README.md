@@ -37,6 +37,7 @@ $ stack run -- -B compressed.bin output.png
 This program.
 
 | File             | Original Size (Bytes) | Compressed Size (Bytes) | Ratio (Compressed/Original) |
+|------------------|-----------------------|-------------------------|-----------------------------|
 | dom_casmurro.txt | 389670                | 219091                  | 0.562248                    |
 | fonte0.txt       | 1000                  | 292                     | 0.292000                    |
 | fonte1.txt       | 1000000               | 416105                  | 0.416105                    |
@@ -48,6 +49,7 @@ This program.
 Ubuntu's `zip` utility.
 
 | File             | Original Size (Bytes) | Compressed Size (Bytes) | Ratio (Compressed/Original) |
+|------------------|-----------------------|-------------------------|-----------------------------|
 | dom_casmurro.txt | 389670                | 153834                  | 0.394780                    |
 | fonte0.txt       | 1000                  | 501                     | 0.501000                    |
 | fonte1.txt       | 1000000               | 489832                  | 0.489832                    |
