@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5ee5906d61777933d0d013c2d8437b7b461ea6aa2884bc7dd8d1a1c5bee2d9a2
+-- hash: bc6d7c804877f25587c7c8c339997c54643072f7236858552e3be2dd0a1502ab
 
 name:           hhuffman-tree
 version:        0.1.0.0
@@ -29,7 +29,6 @@ library
   exposed-modules:
       Bits
       Code
-      Lib
       Tree
   other-modules:
       Paths_hhuffman_tree

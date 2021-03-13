@@ -46,18 +46,18 @@ data EncodingDataB =
 instance Bin.Binary EncodingDataB
 
 encodeT input = do
-  (table, padding, bs) <- encode $ T.unpack input
-  pure $ EncodingDataT { tableT    = table
-                       , paddingT  = padding
-                       , contentsT = bs
-                       }
+  (table, padding, bs, p) <- encode $ T.unpack input
+  pure (p, EncodingDataT { tableT    = table
+                     , paddingT  = padding
+                     , contentsT = bs
+                     })
 
 encodeB input = do
-  (table, padding, bs) <- encode $ B.unpack input
-  pure $ EncodingDataB { tableB    = table
-                       , paddingB  = padding
-                       , contentsB = bs
-                       }
+  (table, padding, bs, p) <- encode $ B.unpack input
+  pure (p, EncodingDataB { tableB    = table
+                         , paddingB  = padding
+                         , contentsB = bs
+                         })
 
 decodeT (EncodingDataT table padding contents) = do
   let contents' = drop padding $ fromByteString contents
@@ -67,14 +67,15 @@ decodeB (EncodingDataB table padding contents) = do
   let contents' = drop padding $ fromByteString contents
   B.pack <$> decode contents' table
 
-encode :: (Traversable t, Ord a) => t a -> Maybe (Table a, Int, B.ByteString)
+encode :: (Traversable t, Ord a) => t a -> Maybe (Table a, Int, B.ByteString, M.Map a Double)
 encode input = do
   let f = freqs input
+  let p = probsFromFreqs f
   tree <- buildTree f
   table@(Table t) <- mkTable tree
   encoded <- concat <$> traverse (`M.lookup` t) input
   let (bs, padding) = toByteString encoded
-  pure (table, padding, bs)
+  pure (table, padding, bs, p)
 
 decode :: Ord a => BitString -> Table a -> Either Error [a]
 decode bits (Table t) = runIdentity $ runExceptT $ runReaderT (evalStateT s bits) (t', k)
@@ -116,6 +117,19 @@ buildTree = go . map (\(x, w) -> Leaf w x) . M.toList
           let (x1:x2:xs) = L.sortOn getTreeWeight ls
               merged = merge x1 x2 : xs
           go merged
+
+entropy :: (Ord a, Traversable t) => t a -> Double
+entropy = entropyFromProbs . probs
+
+entropyFromProbs :: M.Map a Double -> Double
+entropyFromProbs = negate . sum . map (\p -> p * logBase 2 p) . M.elems
+
+probs :: (Ord a, Traversable t) => t a -> M.Map a Double
+probs = probsFromFreqs . freqs
+
+probsFromFreqs :: M.Map a Int -> M.Map a Double
+probsFromFreqs fs = M.map (\k -> fromIntegral k / n) fs
+  where n = fromIntegral $ M.foldr (+) 0 fs
 
 freqs :: (Ord a, Traversable t) => t a -> M.Map a Int
 freqs xs = execState s M.empty

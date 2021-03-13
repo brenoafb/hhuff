@@ -3,6 +3,8 @@
 module Main where
 
 import System.Environment
+import Data.Maybe (fromJust)
+import Data.Word (Word8)
 import qualified Data.ByteString as B
 import qualified Data.Binary as Bin
 import qualified Data.Map as M
@@ -33,8 +35,8 @@ textEncode inputFile outputFile = do
   input <- TIO.readFile inputFile
   case encodeT input of
     Nothing -> putStrLn "Encoding error"
-    Just d -> do
-      printInfoT d
+    Just (p, d) -> do
+      printInfoT p d
       Bin.encodeFile outputFile d
 
 textDecode inputFile outputFile = do
@@ -52,8 +54,8 @@ binaryEncode inputFile outputFile = do
   input <- B.readFile inputFile
   case encodeB input of
     Nothing -> putStrLn "Encoding error"
-    Just d -> do
-      printInfoB d
+    Just (p, d) -> do
+      printInfoB p d
       Bin.encodeFile outputFile d
 
 binaryDecode inputFile outputFile = do
@@ -72,20 +74,23 @@ printTable (Table table) =
         $ M.toList table
 
 
-printInfoT :: EncodingDataT -> IO ()
-printInfoT edt = do
-  putStrLn $ "Encoded cotent size: " <> show (B.length $ contentsT edt) <> " bytes"
-  putStrLn $ "Padding size: " <> (show $ paddingT edt)
-  putStrLn $ "Average symbol length: " <> show (averageSymbolLength $ tableT edt) <> " bits"
+printInfoT :: M.Map Char Double -> EncodingDataT -> IO ()
+printInfoT p edt = do
+  putStrLn $ "Encoded content size: " <> show (B.length $ contentsT edt) <> " bytes"
+  putStrLn $ "Padding size: " <> show (paddingT edt)
+  putStrLn $ "Average symbol length: " <> show (averageSymbolLength p $ tableT edt) <> " bits"
+  putStrLn $ "Input entropy: " <> show (entropyFromProbs p)
 
-printInfoB :: EncodingDataB -> IO ()
-printInfoB edt = do
-  putStrLn $ "Encoded cotent size: " <> show (B.length $ contentsB edt) <> " bytes"
-  putStrLn $ "Padding size: " <> (show $ paddingB edt)
-  putStrLn $ "Average symbol length: " <> show (averageSymbolLength $ tableB edt) <> " bits"
+printInfoB :: M.Map Word8 Double -> EncodingDataB -> IO ()
+printInfoB p edt = do
+  putStrLn $ "Encoded content size: " <> show (B.length $ contentsB edt) <> " bytes"
+  putStrLn $ "Padding size: " <> show (paddingB edt)
+  putStrLn $ "Average symbol length: " <> show (averageSymbolLength p $ tableB edt) <> " bits"
+  putStrLn $ "Input entropy: " <> show (entropyFromProbs p)
 
-averageSymbolLength :: Table a -> Double
-averageSymbolLength (Table m) = s / n
-  where codes = M.elems m
-        s = sum $ map (fromIntegral . length) codes
-        n = fromIntegral $ length codes
+averageSymbolLength :: (Ord a) => M.Map a Double -> Table a -> Double
+averageSymbolLength p (Table m) = s
+  where 
+        pairMap = M.mapWithKey (\k v -> (v, fromJust $ M.lookup k p)) m
+        pairs = M.elems pairMap
+        s = sum $ map (\(code, prob) -> prob * fromIntegral (length code)) pairs
