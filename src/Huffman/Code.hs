@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Code where
+module Huffman.Code where
 
-import Bits
-import Tree
+import Huffman.Bits
+import Huffman.Tree
 
 import Control.Applicative
 import Control.Monad.Except

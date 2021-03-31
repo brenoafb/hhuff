@@ -1,4 +1,4 @@
-module Tree where
+module Huffman.Tree where
 
 data Tree a n = Leaf n a
               | Node n [a] (Tree a n) (Tree a n)

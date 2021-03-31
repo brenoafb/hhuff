@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverlappingInstances #-}
 
-module Bits where
+module Huffman.Bits where
 
 import Data.Bits ((.&.))
 import Data.Word (Word8)
